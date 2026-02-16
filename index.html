@@ -449,7 +449,8 @@ class Platform {
     update(speed) {
         this.y -= speed;
         if (this.type === 2 || this.type === 3) {
-            this.animOffset = (state.frameCount * 2) % 8;
+            // 動畫速度加倍
+            this.animOffset = (state.frameCount * 4) % 16;
         }
     }
 
@@ -644,9 +645,9 @@ function update() {
                     player.vy = -4;
                     createParticles(player.x, player.y + player.height, '#ffd700', 5);
                 } else if (p.type === 2) {
-                    player.x -= 2;
+                    player.x -= 4; // 左傳送速度加倍 (原為 2)
                 } else if (p.type === 3) {
-                    player.x += 2;
+                    player.x += 4; // 右傳送速度加倍 (原為 2)
                 } else if (p.type === 4) {
                     if (!p.touched) {
                         p.touched = true;
