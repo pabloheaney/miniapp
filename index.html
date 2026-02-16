@@ -23,7 +23,8 @@
             align-items: center;
             height: 100vh;
             font-family: 'VT323', monospace;
-            touch-action: none; /* 防止手機上下滑動 */
+            touch-action: none;
+            user-select: none;
         }
 
         #game-container {
@@ -35,13 +36,14 @@
             background-color: var(--bg-color);
             box-shadow: 0 0 20px rgba(0, 0, 0, 0.8);
             border: 4px solid #8d6e63;
+            overflow: hidden; /* 確保 UI 不會跑出去 */
         }
 
         canvas {
             display: block;
             width: 100%;
             height: 100%;
-            image-rendering: pixelated; /* 關鍵：保持像素銳利 */
+            image-rendering: pixelated;
         }
 
         /* 復古 CRT 掃描線效果 */
@@ -63,7 +65,6 @@
             z-index: 10;
         }
 
-        /* 邊框裝飾 */
         .gears-overlay {
             position: absolute;
             top: 0;
@@ -76,23 +77,32 @@
             z-index: 11;
         }
 
-        #ui-layer {
+        /* HUD 層 (分數與血量) */
+        #hud-layer {
             position: absolute;
             top: 10px;
             left: 10px;
-            color: #e6c288;
-            font-size: 24px;
-            text-shadow: 2px 2px 0px #000;
-            z-index: 5;
+            z-index: 20;
             pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .hud-text {
+            color: #e6c288;
+            font-size: 28px; /* 加大字體 */
+            text-shadow: 2px 2px 0px #000;
+            margin: 0;
+            line-height: 1;
         }
 
         #hp-bar-container {
-            margin-top: 5px;
-            width: 100px;
-            height: 10px;
+            width: 120px;
+            height: 12px;
             background: #333;
             border: 2px solid #5d4037;
+            position: relative;
         }
 
         #hp-bar-fill {
@@ -101,6 +111,103 @@
             background: #b71c1c;
             transition: width 0.1s;
         }
+
+        /* 全螢幕覆蓋層 (選單與結束畫面) */
+        .overlay-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.75);
+            z-index: 30;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            color: #fff;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+
+        .overlay-layer.active {
+            opacity: 1;
+            pointer-events: auto; /* 允許點擊 */
+        }
+
+        .overlay-title {
+            font-size: 64px;
+            color: #ffd700;
+            text-shadow: 4px 4px 0px #3e2723;
+            margin: 0 0 20px 0;
+            letter-spacing: 2px;
+        }
+
+        .overlay-subtitle {
+            font-size: 32px;
+            color: #e6c288;
+            margin-bottom: 40px;
+            text-shadow: 2px 2px 0px #000;
+        }
+
+        .instruction-box {
+            background: rgba(93, 64, 55, 0.8);
+            padding: 20px;
+            border: 2px solid #d4a017;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+
+        .instruction-text {
+            font-size: 20px;
+            color: #fff;
+            line-height: 1.5;
+            margin: 5px 0;
+        }
+
+        .blink {
+            animation: blinker 1.5s linear infinite;
+        }
+
+        @keyframes blinker {
+            50% { opacity: 0; }
+        }
+
+        .btn-start {
+            margin-top: 30px;
+            padding: 10px 30px;
+            font-family: 'VT323', monospace;
+            font-size: 32px;
+            color: #1a1815;
+            background: #d4a017;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            box-shadow: 0 4px 0 #8d6e63;
+            transition: transform 0.1s, box-shadow 0.1s;
+        }
+
+        .btn-start:active {
+            transform: translateY(4px);
+            box-shadow: 0 0 0 #8d6e63;
+        }
+
+        /* 觸控區域提示 (僅在 Menu 顯示) */
+        .touch-zones {
+            position: absolute;
+            bottom: 20px;
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            padding: 0 20px;
+            box-sizing: border-box;
+            opacity: 0.5;
+            font-size: 18px;
+            color: #aaa;
+        }
+
     </style>
 </head>
 <body>
@@ -110,27 +217,51 @@
     <div class="scanlines"></div>
     <div class="gears-overlay"></div>
     
-    <div id="ui-layer" style="display: none;">
-        <div>深淵層數: <span id="score">0</span>m</div>
+    <!-- HUD -->
+    <div id="hud-layer" style="display: none;">
+        <div class="hud-text">DEPTH: <span id="score">0</span>m</div>
         <div id="hp-bar-container"><div id="hp-bar-fill"></div></div>
+    </div>
+
+    <!-- 主選單 -->
+    <div id="menu-layer" class="overlay-layer active">
+        <div class="overlay-title">STEAM SHAFT</div>
+        <div class="overlay-subtitle">蒸汽深淵</div>
+        
+        <button class="btn-start blink" onclick="startGame()">START GAME</button>
+        
+        <div class="instruction-box">
+            <p class="instruction-text">← 左側點擊 / 右側點擊 →</p>
+            <p class="instruction-text" style="color: #ff5252;">⚠ 避開尖刺與頂部 ⚠</p>
+        </div>
+    </div>
+
+    <!-- 結束畫面 -->
+    <div id="gameover-layer" class="overlay-layer">
+        <div class="overlay-title" style="color: #ff5252;">GAME OVER</div>
+        <div class="overlay-subtitle">最終深度: <span id="final-score">0</span>m</div>
+        <button class="btn-start blink" onclick="startGame()">RETRY</button>
     </div>
 </div>
 
 <script>
 /**
  * 蒸汽深淵 (Steam Shaft)
- * 一款由 Vanilla JS + Canvas 打造的 NS-SHAFT 風格游戲
+ * 更新：UI 分離版，文字清晰化
  */
 
 const canvas = document.getElementById('gameCanvas');
-const ctx = canvas.getContext('2d', { alpha: false }); // 優化渲染
-const uiLayer = document.getElementById('ui-layer');
+const ctx = canvas.getContext('2d', { alpha: false });
+const hudLayer = document.getElementById('hud-layer');
+const menuLayer = document.getElementById('menu-layer');
+const gameoverLayer = document.getElementById('gameover-layer');
 const scoreEl = document.getElementById('score');
+const finalScoreEl = document.getElementById('final-score');
 const hpBarFill = document.getElementById('hp-bar-fill');
 
 // 游戲常量
-const GAME_WIDTH = 320;  // 內部邏輯寬度 (像素風格)
-const GAME_HEIGHT = 480; // 內部邏輯高度
+const GAME_WIDTH = 320;
+const GAME_HEIGHT = 480;
 const GRAVITY = 0.4;
 const FRICTION = 0.8;
 const MOVE_SPEED = 5;
@@ -138,24 +269,21 @@ const MAX_FALL_SPEED = 8;
 const PLATFORM_WIDTH = 70;
 const PLATFORM_HEIGHT = 14;
 const PLAYER_SIZE = 16;
-const CEILING_DAMAGE_HEIGHT = 20; // 頂部尖刺區域高度
+const CEILING_DAMAGE_HEIGHT = 20;
 
-// 游戲狀態
 let state = {
-    mode: 'MENU', // MENU, PLAYING, GAMEOVER
+    mode: 'MENU',
     score: 0,
     difficulty: 1,
-    frameCount: 0,
-    lastTime: 0
+    frameCount: 0
 };
 
-// 輸入狀態
 const input = {
     left: false,
     right: false
 };
 
-// 音效合成器 (簡單的嗶嗶聲，無需外部文件)
+// 音效系統
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 function playSound(type) {
     if (audioCtx.state === 'suspended') audioCtx.resume();
@@ -191,7 +319,6 @@ function playSound(type) {
     }
 }
 
-// 實體類
 class Player {
     constructor() {
         this.width = PLAYER_SIZE;
@@ -208,12 +335,10 @@ class Player {
         this.maxHp = 12;
         this.onGround = false;
         this.invincibleTimer = 0;
-        this.animFrame = 0;
         this.faceRight = true;
     }
 
     update() {
-        // 水平移動
         if (input.left) {
             this.vx = -MOVE_SPEED;
             this.faceRight = false;
@@ -226,44 +351,39 @@ class Player {
             this.vx *= FRICTION;
         }
 
-        // 應用速度
         this.x += this.vx;
 
-        // 邊界檢查 (左右循環)
         if (this.x < -this.width / 2) this.x = GAME_WIDTH - this.width / 2;
         if (this.x > GAME_WIDTH - this.width / 2) this.x = -this.width / 2;
 
-        // 重力
         if (!this.onGround) {
             this.vy += GRAVITY;
             if (this.vy > MAX_FALL_SPEED) this.vy = MAX_FALL_SPEED;
         }
         this.y += this.vy;
 
-        // 頂部尖刺傷害
         if (this.y < CEILING_DAMAGE_HEIGHT) {
-            this.hurt(4); // 頂部傷害很高
+            this.hurt(4);
             this.y = CEILING_DAMAGE_HEIGHT + 2;
-            this.vy = 2; // 被彈下來
+            this.vy = 2;
             createParticles(this.x + this.width/2, this.y, '#b71c1c', 10);
         }
 
-        // 底部死亡
         if (this.y > GAME_HEIGHT) {
             this.hp = 0;
         }
 
-        // 無敵時間遞減
         if (this.invincibleTimer > 0) this.invincibleTimer--;
 
-        // 更新UI
+        // UI 更新移出 update 循環，減少 DOM 操作頻率，或者僅在變化時更新
+        // 為簡單起見，這裡每幀更新是可以的，但最好優化
         hpBarFill.style.width = `${(this.hp / this.maxHp) * 100}%`;
     }
 
     hurt(amount) {
         if (this.invincibleTimer > 0) return;
         this.hp -= amount;
-        this.invincibleTimer = 60; // 1秒無敵
+        this.invincibleTimer = 60;
         playSound('hurt');
         screenShake = 10;
         if (this.hp <= 0) this.hp = 0;
@@ -277,29 +397,21 @@ class Player {
     draw(ctx) {
         if (this.invincibleTimer > 0 && Math.floor(Date.now() / 50) % 2 === 0) return;
 
-        // 繪製蒸汽機器人 (簡單像素畫)
         ctx.save();
         ctx.translate(Math.round(this.x), Math.round(this.y));
         
-        // 翻轉
         if (!this.faceRight) {
             ctx.translate(this.width, 0);
             ctx.scale(-1, 1);
         }
 
-        // 身體 (銅色)
         ctx.fillStyle = '#cd7f32';
         ctx.fillRect(2, 4, 12, 12);
-        
-        // 頭部 (金色)
         ctx.fillStyle = '#ffd700';
         ctx.fillRect(4, 0, 8, 8);
-        
-        // 眼睛 (護目鏡)
-        ctx.fillStyle = '#00e5ff'; // 霓虹藍
+        ctx.fillStyle = '#00e5ff';
         ctx.fillRect(8, 2, 4, 2);
         
-        // 腳步動畫
         let legOffset = 0;
         if (Math.abs(this.vx) > 0.5) {
             legOffset = Math.sin(state.frameCount * 0.5) * 2;
@@ -308,7 +420,6 @@ class Player {
         ctx.fillRect(4 + legOffset, 14, 3, 2);
         ctx.fillRect(9 - legOffset, 14, 3, 2);
 
-        // 蒸汽粒子
         if (state.frameCount % 10 === 0) {
             createParticles(this.x + (this.faceRight ? 0 : this.width), this.y + 10, 'rgba(200,200,200,0.5)', 1, true);
         }
@@ -323,12 +434,6 @@ class Platform {
         this.h = PLATFORM_HEIGHT;
         this.x = Math.random() * (GAME_WIDTH - this.w);
         this.y = y;
-        // 平台類型: 
-        // 0: 普通 (Normal) - 60%
-        // 1: 尖刺 (Spikes) - 15%
-        // 2: 傳送帶左 (Conveyor L) - 10%
-        // 3: 傳送帶右 (Conveyor R) - 10%
-        // 4: 易碎 (Fragile) - 5%
         const rand = Math.random();
         if (rand < 0.6) this.type = 0;
         else if (rand < 0.75) this.type = 1;
@@ -336,14 +441,13 @@ class Platform {
         else if (rand < 0.95) this.type = 3;
         else this.type = 4;
 
-        this.touched = false; // 用於易碎平台
+        this.touched = false;
         this.active = true;
+        this.animOffset = 0;
     }
 
     update(speed) {
         this.y -= speed;
-        
-        // 傳送帶動畫
         if (this.type === 2 || this.type === 3) {
             this.animOffset = (state.frameCount * 2) % 8;
         }
@@ -355,25 +459,22 @@ class Platform {
         let ry = Math.round(this.y);
 
         ctx.fillStyle = '#000';
-        // 陰影
         ctx.fillRect(rx + 2, ry + 2, this.w, this.h);
 
         switch (this.type) {
-            case 0: // 普通 (生鏽鋼鐵)
-                ctx.fillStyle = '#5d4037'; // 深棕框
+            case 0:
+                ctx.fillStyle = '#5d4037';
                 ctx.fillRect(rx, ry, this.w, this.h);
-                ctx.fillStyle = '#8d6e63'; // 內部
+                ctx.fillStyle = '#8d6e63';
                 ctx.fillRect(rx + 1, ry + 1, this.w - 2, this.h - 2);
-                // 鉚釘
                 ctx.fillStyle = '#bcaaa4';
                 ctx.fillRect(rx + 2, ry + 2, 2, 2);
                 ctx.fillRect(rx + this.w - 4, ry + 2, 2, 2);
                 break;
-            case 1: // 尖刺 (黃銅危險)
+            case 1:
                 ctx.fillStyle = '#8d6e63';
-                ctx.fillRect(rx, ry + 6, this.w, this.h - 6); // 底部基座
-                // 畫刺
-                ctx.fillStyle = '#ffd700'; // 金刺
+                ctx.fillRect(rx, ry + 6, this.w, this.h - 6);
+                ctx.fillStyle = '#ffd700';
                 for(let i=0; i<this.w; i+=10) {
                     ctx.beginPath();
                     ctx.moveTo(rx + i, ry + 6);
@@ -382,11 +483,10 @@ class Platform {
                     ctx.fill();
                 }
                 break;
-            case 2: // 傳送帶 左 (齒輪驅動)
-            case 3: // 傳送帶 右
+            case 2:
+            case 3:
                 ctx.fillStyle = '#37474f';
                 ctx.fillRect(rx, ry, this.w, this.h);
-                // 箭頭動畫
                 ctx.fillStyle = '#cfd8dc';
                 for(let i=0; i<this.w; i+=16) {
                     let offset = (this.type === 2) ? -this.animOffset : this.animOffset;
@@ -396,7 +496,7 @@ class Platform {
                     }
                 }
                 break;
-            case 4: // 易碎 (玻璃/裂木)
+            case 4:
                 ctx.fillStyle = '#fff9c4';
                 ctx.globalAlpha = 0.6;
                 ctx.fillRect(rx, ry, this.w, this.h);
@@ -408,7 +508,6 @@ class Platform {
     }
 }
 
-// 粒子系統
 let particles = [];
 class Particle {
     constructor(x, y, color, speedY, isSteam) {
@@ -427,7 +526,7 @@ class Particle {
         this.life--;
         if (this.isSteam) {
             this.size += 0.1;
-            this.vy -= 0.02; // 向上飄
+            this.vy -= 0.02;
         }
     }
     draw(ctx) {
@@ -443,150 +542,143 @@ function createParticles(x, y, color, count, isSteam=false) {
     }
 }
 
-// 全局變量
 let player;
 let platforms = [];
 let screenShake = 0;
-let platformSpeed = 2; // 基礎速度
-let distanceTraveled = 0;
+let platformSpeed = 2;
 
-// 初始化
 function init() {
     resize();
     player = new Player();
     platforms = [];
     state.score = 0;
-    state.difficulty = 1;
-    platformSpeed = 1.5;
-    distanceTraveled = 0;
     
-    // 生成初始平台
+    // 背景平台
     for(let i=0; i<7; i++) {
         let p = new Platform(100 + i * 80);
-        p.type = 0; // 開始全是普通平台
+        p.type = 0;
         platforms.push(p);
     }
     
-    state.mode = 'MENU';
-    uiLayer.style.display = 'none';
+    showMenu();
 }
 
-function startGame() {
+function showMenu() {
+    state.mode = 'MENU';
+    menuLayer.classList.add('active');
+    gameoverLayer.classList.remove('active');
+    hudLayer.style.display = 'none';
+}
+
+function showGameOver() {
+    state.mode = 'GAMEOVER';
+    gameoverLayer.classList.add('active');
+    hudLayer.style.display = 'none';
+    finalScoreEl.innerText = state.score;
+}
+
+// 暴露給全局以便 HTML 按鈕調用
+window.startGame = function() {
     state.mode = 'PLAYING';
     state.score = 0;
     player.reset();
-    uiLayer.style.display = 'block';
     
-    // 清空並生成新平台
+    // 隱藏選單
+    menuLayer.classList.remove('active');
+    gameoverLayer.classList.remove('active');
+    hudLayer.style.display = 'flex';
+    
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    
     platforms = [];
     for(let i=0; i<8; i++) {
         let p = new Platform(400 + i * 80);
         p.type = 0; 
         platforms.push(p);
     }
-    // 讓玩家在第一個平台上
     platforms[0].x = GAME_WIDTH / 2 - PLATFORM_WIDTH/2;
     platforms[0].y = 350;
     player.x = GAME_WIDTH / 2 - PLAYER_SIZE/2;
     player.y = 300;
-}
+};
 
-// 物理與邏輯更新
 function update() {
     if (state.mode !== 'PLAYING') return;
 
     state.frameCount++;
     
-    // 難度曲線：隨著分數提高，平台上升速度變快
     platformSpeed = 1.5 + (state.score / 500); 
     if (platformSpeed > 4) platformSpeed = 4;
 
-    // 平台邏輯
     let lastY = 0;
     platforms.forEach(p => {
         p.update(platformSpeed);
         if (p.y > lastY) lastY = p.y;
     });
 
-    // 移除超出頂部的平台
     platforms = platforms.filter(p => p.y + p.h > 0);
 
-    // 生成新平台 (底部)
-    if (lastY < GAME_HEIGHT - 60) { // 間距
+    if (lastY < GAME_HEIGHT - 60) {
         platforms.push(new Platform(GAME_HEIGHT));
     }
 
-    // 玩家物理
     player.update();
     
-    // 玩家與平台碰撞檢測
     player.onGround = false;
-    // 預先假設玩家在移動
-    let onConveyor = 0;
-
-    if (player.vy >= 0) { // 只有下落時才檢測
+    if (player.vy >= 0) {
         platforms.forEach(p => {
             if (!p.active) return;
             
-            // 簡單AABB碰撞 (腳部檢測)
             if (player.x + player.width > p.x &&
                 player.x < p.x + p.w &&
                 player.y + player.height >= p.y &&
-                player.y + player.height <= p.y + p.h + player.vy + 2 // 寬容度
+                player.y + player.height <= p.y + p.h + player.vy + 2
                ) {
                 
-                // 碰到平台
                 player.y = p.y - player.height;
-                player.vy = -platformSpeed; // 玩家跟隨平台上升 (重要邏輯)
+                player.vy = -platformSpeed;
                 player.onGround = true;
 
-                if (p.type === 1) { // 尖刺
+                if (p.type === 1) {
                     player.hurt(5);
-                    player.vy = -4; // 彈起
+                    player.vy = -4;
                     createParticles(player.x, player.y + player.height, '#ffd700', 5);
-                } else if (p.type === 2) { // 左傳送
+                } else if (p.type === 2) {
                     player.x -= 2;
-                    onConveyor = -1;
-                } else if (p.type === 3) { // 右傳送
+                } else if (p.type === 3) {
                     player.x += 2;
-                    onConveyor = 1;
-                } else if (p.type === 4) { // 易碎
+                } else if (p.type === 4) {
                     if (!p.touched) {
                         p.touched = true;
                         playSound('step');
-                        setTimeout(() => { p.active = false; createParticles(p.x + p.w/2, p.y, '#fff', 8); }, 200); // 0.2秒後消失
+                        setTimeout(() => { p.active = false; createParticles(p.x + p.w/2, p.y, '#fff', 8); }, 200);
                     }
                 } else {
-                    // 普通平台，回血機制 (非常緩慢)
                     if (state.frameCount % 60 === 0) player.heal(1);
                 }
             }
         });
     }
 
-    // 計算分數 (存活越久/越深)
-    if (state.frameCount % 10 === 0) state.score++;
-    scoreEl.innerText = state.score;
+    if (state.frameCount % 10 === 0) {
+        state.score++;
+        scoreEl.innerText = state.score;
+    }
 
-    // 粒子更新
     particles.forEach((p, index) => {
         p.update();
         if (p.life <= 0) particles.splice(index, 1);
     });
 
-    // 死亡檢測
     if (player.hp <= 0) {
-        state.mode = 'GAMEOVER';
+        showGameOver();
         playSound('hurt');
     }
 }
 
-// 渲染
 function draw() {
-    // 適配 Canvas 縮放
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     
-    // 屏幕震動
     let shakeX = 0, shakeY = 0;
     if (screenShake > 0) {
         shakeX = (Math.random() - 0.5) * screenShake;
@@ -595,22 +687,17 @@ function draw() {
         if (screenShake < 0.5) screenShake = 0;
     }
 
-    // 清除背景
     ctx.fillStyle = '#1a1815';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // 應用邏輯坐標系縮放
     let scale = canvas.width / GAME_WIDTH;
     ctx.scale(scale, scale);
     ctx.translate(shakeX, shakeY);
 
-    // 繪製背景齒輪 (裝飾)
     drawBackgroundGears(ctx);
 
-    // 繪製頂部危險區域
     ctx.fillStyle = '#3e2723';
     ctx.fillRect(0, 0, GAME_WIDTH, CEILING_DAMAGE_HEIGHT);
-    // 頂部尖刺
     ctx.fillStyle = '#b71c1c';
     for(let i=0; i<GAME_WIDTH; i+=10) {
         ctx.beginPath();
@@ -620,37 +707,21 @@ function draw() {
         ctx.fill();
     }
 
-    // 繪製平台
     platforms.forEach(p => p.draw(ctx));
-
-    // 繪製粒子
     particles.forEach(p => p.draw(ctx));
 
-    // 繪製玩家
     if (state.mode === 'PLAYING') {
         player.draw(ctx);
-    }
-
-    // UI層
-    if (state.mode === 'MENU') {
-        drawMenu();
-    } else if (state.mode === 'GAMEOVER') {
-        drawGameOver();
     }
 }
 
 function drawBackgroundGears(ctx) {
     ctx.save();
     ctx.fillStyle = '#2d241e';
-    
-    // 大齒輪
     let angle = state.frameCount * 0.01;
     drawGear(ctx, GAME_WIDTH/2, GAME_HEIGHT/2, 80, 12, angle);
-    
-    // 小齒輪
     drawGear(ctx, 40, 100, 30, 8, -angle * 2);
     drawGear(ctx, GAME_WIDTH - 40, GAME_HEIGHT - 100, 40, 8, -angle * 1.5);
-    
     ctx.restore();
 }
 
@@ -667,66 +738,22 @@ function drawGear(ctx, x, y, radius, teeth, angle) {
     }
     ctx.closePath();
     ctx.fill();
-    
-    // 中心孔
     ctx.globalCompositeOperation = 'destination-out';
     ctx.beginPath();
     ctx.arc(0, 0, radius * 0.3, 0, Math.PI * 2);
     ctx.fill();
     ctx.globalCompositeOperation = 'source-over';
-    
     ctx.rotate(-angle);
     ctx.translate(-x, -y);
 }
 
-function drawMenu() {
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-    ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
-    
-    ctx.fillStyle = '#ffd700';
-    ctx.textAlign = 'center';
-    ctx.font = '40px VT323';
-    ctx.fillText('STEAM SHAFT', GAME_WIDTH/2, 150);
-    
-    ctx.fillStyle = '#fff';
-    ctx.font = '20px VT323';
-    ctx.fillText('點擊開始游戲', GAME_WIDTH/2, 250);
-    
-    ctx.fillStyle = '#8d6e63';
-    ctx.font = '16px VT323';
-    ctx.fillText('左/右點擊或方向鍵移動', GAME_WIDTH/2, 300);
-    ctx.fillText('避開尖刺，不要掉落', GAME_WIDTH/2, 320);
-}
-
-function drawGameOver() {
-    ctx.fillStyle = 'rgba(50, 0, 0, 0.6)';
-    ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
-    
-    ctx.fillStyle = '#ff5252';
-    ctx.textAlign = 'center';
-    ctx.font = '40px VT323';
-    ctx.fillText('GAME OVER', GAME_WIDTH/2, 150);
-    
-    ctx.fillStyle = '#fff';
-    ctx.font = '24px VT323';
-    ctx.fillText(`最終深度: ${state.score}m`, GAME_WIDTH/2, 220);
-    
-    if (state.frameCount % 60 < 30) {
-        ctx.font = '20px VT323';
-        ctx.fillText('點擊重試', GAME_WIDTH/2, 300);
-    }
-}
-
-// 循環
 function loop() {
     update();
     draw();
     requestAnimationFrame(loop);
 }
 
-// 響應式處理
 function resize() {
-    // 保持長寬比
     const aspect = GAME_WIDTH / GAME_HEIGHT;
     let w = window.innerWidth;
     let h = window.innerHeight;
@@ -737,12 +764,11 @@ function resize() {
         h = w / aspect;
     }
     
-    canvas.width = GAME_WIDTH;  // 內部渲染解析度固定
+    canvas.width = GAME_WIDTH;
     canvas.height = GAME_HEIGHT;
 }
 window.addEventListener('resize', resize);
 
-// 輸入監聽
 window.addEventListener('keydown', e => {
     if (e.key === 'ArrowLeft') input.left = true;
     if (e.key === 'ArrowRight') input.right = true;
@@ -757,13 +783,12 @@ window.addEventListener('keyup', e => {
     if (e.key === 'ArrowRight') input.right = false;
 });
 
-// 觸控監聽
+// 觸控邏輯：只在非 Menu/GameOver 層 active 時監聽 Canvas
+// 或者讓 Menu 層 pointer-events: auto，但按鈕外可以透傳？
+// 這裡簡單處理：直接監聽 window 或 canvas，並計算區域
 canvas.addEventListener('touchstart', e => {
     e.preventDefault();
-    if (state.mode !== 'PLAYING') {
-        startGame();
-        return;
-    }
+    if (state.mode !== 'PLAYING') return; // 選單有自己的按鈕
     
     const rect = canvas.getBoundingClientRect();
     for (let i = 0; i < e.touches.length; i++) {
@@ -775,12 +800,10 @@ canvas.addEventListener('touchstart', e => {
 
 canvas.addEventListener('touchend', e => {
     e.preventDefault();
-    // 簡單處理：如果沒有觸點了，就停止移動
     if (e.touches.length === 0) {
         input.left = false;
         input.right = false;
     } else {
-        // 重新檢測剩餘觸點
         input.left = false;
         input.right = false;
         const rect = canvas.getBoundingClientRect();
@@ -792,12 +815,8 @@ canvas.addEventListener('touchend', e => {
     }
 });
 
-// 鼠標點擊支持 (為了在電腦上用滑鼠測試)
 canvas.addEventListener('mousedown', e => {
-    if (state.mode !== 'PLAYING') {
-        startGame();
-        return;
-    }
+    if (state.mode !== 'PLAYING') return;
     const rect = canvas.getBoundingClientRect();
     let x = (e.clientX - rect.left) / (rect.width / GAME_WIDTH);
     if (x < GAME_WIDTH / 2) input.left = true;
@@ -808,10 +827,8 @@ canvas.addEventListener('mouseup', () => {
     input.right = false;
 });
 
-// 啟動
 init();
 loop();
-
 </script>
 </body>
 </html>
