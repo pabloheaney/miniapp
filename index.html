@@ -390,12 +390,12 @@
             if (gameState.vipState.expiry > now) {
                 const timeLeft = Math.ceil((gameState.vipState.expiry - now) / (1000 * 60 * 60 * 24));
                 if (gameState.vipState.level === 'premium') {
-                    vipNameEl.innerHTML = `<span class="text-yellow-400">高級</span> ${timeLeft}天`;
+                    vipNameEl.innerHTML = `<span class="text-yellow-400">高級VIP</span> 剩餘${timeLeft}天`;
                     vipIconContainer.classList.add('bg-yellow-600', 'shadow-[0_0_5px_rgba(234,179,8,0.5)]');
                     vipIconContainer.innerHTML = `<i data-lucide="crown" size="12" class="text-white"></i>`;
                     body.classList.add('vip-premium');
                 } else {
-                    vipNameEl.innerHTML = `<span class="text-slate-200">標準</span> ${timeLeft}天`;
+                    vipNameEl.innerHTML = `<span class="text-slate-200">標準VIP</span> 剩餘${timeLeft}天`;
                     vipIconContainer.classList.add('bg-slate-500');
                     vipIconContainer.innerHTML = `<i data-lucide="shield" size="12" class="text-white"></i>`;
                     body.classList.add('vip-standard');
